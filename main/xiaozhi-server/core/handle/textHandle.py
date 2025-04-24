@@ -7,6 +7,7 @@ from core.handle.receiveAudioHandle import startToChat, handleAudioMessage
 from core.handle.sendAudioHandle import send_stt_message, send_tts_message
 from core.handle.iotHandle import handleIotDescriptors, handleIotStatus
 import asyncio
+import time#-----------------------------------------------------------
 
 TAG = __name__
 logger = setup_logging()
@@ -24,6 +25,14 @@ async def handleTextMessage(conn, message):
             await handleHelloMessage(conn)
         elif msg_json["type"] == "abort":
             await handleAbortMessage(conn)
+        #----------------------------------------------------------------------------
+        elif msg_json["type"] == "emotion":
+            if "emotion" in msg_json and "confidence" in msg_json:
+                conn.current_emotion = msg_json["emotion"]
+                conn.emotion_confidence = msg_json["confidence"]
+                conn.last_emotion_update = time.time()
+                logger.bind(tag=TAG).info(f"更新情绪状态: {conn.current_emotion}, 置信度: {conn.emotion_confidence}%")
+        #-------------------------------------------------------------------------------
         elif msg_json["type"] == "listen":
             if "mode" in msg_json:
                 conn.client_listen_mode = msg_json["mode"]
@@ -31,6 +40,13 @@ async def handleTextMessage(conn, message):
             if msg_json["state"] == "start":
                 conn.client_have_voice = True
                 conn.client_voice_stop = False
+                #-----------------------------------------------------------------
+                if "emotion" in msg_json and "confidence" in msg_json:
+                    await handleEmotionMessage(conn, {
+                        "emotion": msg_json["emotion"],
+                        "confidence": msg_json["confidence"]
+                    })
+                #-----------------------------------------------------------------
             elif msg_json["state"] == "stop":
                 conn.client_have_voice = True
                 conn.client_voice_stop = True
@@ -63,3 +79,15 @@ async def handleTextMessage(conn, message):
                 asyncio.create_task(handleIotStatus(conn, msg_json["states"]))
     except json.JSONDecodeError:
         await conn.websocket.send(message)
+
+#---------------------------------------------------------------------------------
+async def send_emotion_message(conn, emotion, confidence):
+    """发送情绪消息到客户端"""
+    message = {
+        "type": "emotion",
+        "emotion": emotion,
+        "confidence": confidence,
+        "timestamp": int(time.time() * 1000)
+    }
+    await conn.websocket.send(json.dumps(message))
+#---------------------------------------------------------------------------------
