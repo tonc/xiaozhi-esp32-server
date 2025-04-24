@@ -75,7 +75,28 @@ async def startToChat(conn, text):
         conn.executor.submit(conn.chat_with_function_calling, text)
     else:
         conn.executor.submit(conn.chat, text)
-
+    #-----------------------------------------------------------------------------
+    # 添加情绪信息到对话上下文
+    if conn.current_emotion != "neutral" and conn.emotion_confidence > 50:
+        # 根据情绪状态调整系统提示
+        emotion_context = ""
+        if conn.current_emotion == "happiness":
+            emotion_context = "用户当前情绪状态为开心，请用欢快、热情的语气回复，可以适当使用一些积极的词汇和表情符号。"
+        elif conn.current_emotion == "sadness":
+            emotion_context = "用户当前情绪状态为悲伤，请用温柔、安慰的语气回复，表达理解和关心，避免使用过于欢快的词汇。"
+        elif conn.current_emotion == "anger":
+            emotion_context = "用户当前情绪状态为愤怒，请用平和、理性的语气回复，避免激化情绪，帮助用户冷静下来。"
+        elif conn.current_emotion == "fear":
+            emotion_context = "用户当前情绪状态为恐惧，请用温和、安抚的语气回复，帮助用户缓解焦虑，提供安全感。"
+        elif conn.current_emotion == "surprise":
+            emotion_context = "用户当前情绪状态为惊讶，请用轻松、幽默的语气回复，可以适当表达一些惊讶的情绪。"
+        else:
+            emotion_context = f"用户当前情绪状态为{conn.current_emotion}，请根据这个情绪状态调整回复的语气。"
+        
+        # 添加情绪置信度信息
+        emotion_context += f" 情绪置信度为{conn.emotion_confidence}%。"
+        conn.dialogue.add_system_message(emotion_context)
+    #-----------------------------------------------------------------------------
 
 async def no_voice_close_connect(conn):
     if conn.client_no_voice_last_time == 0.0:
