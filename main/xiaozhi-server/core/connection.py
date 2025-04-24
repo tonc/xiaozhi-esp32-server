@@ -115,7 +115,21 @@ class ConnectionHandler:
         self.timeout_seconds = (
             int(self.config.get("close_connection_no_voice_time", 120)) + 60
         )  # 在原来第一道关闭的基础上加60秒，进行二道关闭
+#---------------------------------------------------------------------------------
+        # 情绪状态相关
+        self.current_emotion = "neutral"  # 默认情绪状态
+        self.emotion_confidence = 0       # 情绪置信度
+        self.last_emotion_update = 0      # 上次情绪更新时间
 
+    def update_emotion_state(self, emotion, confidence):
+        """更新情绪状态"""
+        self.current_emotion = emotion
+        self.emotion_confidence = confidence
+        self.last_emotion_update = time.time()
+        # 可以添加情绪状态变化的回调函数
+        if hasattr(self, 'on_emotion_changed'):
+            self.on_emotion_changed(emotion, confidence)
+#---------------------------------------------------------------------------------
     async def handle_connection(self, ws):
         try:
             # 获取并验证headers
